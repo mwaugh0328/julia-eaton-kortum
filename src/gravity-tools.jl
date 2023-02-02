@@ -66,9 +66,9 @@ function make_trade_costs!(dffix, gravity_results, d, θ)
 
                 language_effect = exp(-inv_θ * lang_coef[2] * foo[get_exporter, :].sharedlanguage[1]) 
 
-                europeancom_effect = exp(-inv_θ * lang_coef[2] * foo[get_exporter, :].europeancom[1]) 
+                europeancom_effect = exp(-inv_θ * lang_coef[3] * foo[get_exporter, :].europeancom[1]) 
 
-                efta_effect = exp(-inv_θ * lang_coef[3] * foo[get_exporter, :].efta[1])
+                efta_effect = exp(-inv_θ * lang_coef[4] * foo[get_exporter, :].efta[1])
 
                 asym_effect = exp( -inv_θ * θm[importer] )           
 
