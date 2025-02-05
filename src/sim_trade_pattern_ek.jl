@@ -3,7 +3,7 @@ using Random
 function sim_trade_pattern_ek(λ, τ, θ, σ, code)
 
     # Parameters for goods and countries and the sample size for prices
-    Ngoods = 100000 # Adjust if too slow
+    Ngoods = 1000000 # Adjust if too slow
     Ncntry = length(λ)
 
     # Parameters for technologies
@@ -18,10 +18,11 @@ function sim_trade_pattern_ek(λ, τ, θ, σ, code)
     pconst = zeros(Ngoods, Ncntry)
 
     for j in 1:Ncntry
-        u = rand(Ngoods)
+
+        u = rand(MersenneTwister(03281978 + j), Ngoods)
 
         # should be p = (log(u) / (-T_i))^(-1/θ) ?
-        pconst[:, j] = (log.(u) ./ (-λ[j])) .^ (1/θ) 
+        pconst[:, j] .= (log.(u) ./ (-λ[j])) .^ (1/θ) 
 
     end
 
