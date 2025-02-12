@@ -26,15 +26,12 @@ dfcntryfix = DataFrame(CSV.File("./ek-data/ek-cntryfix.csv"));
 
 ################################################################
 
-
 grv_params = gravity_params(L = dflabor.L, dfcntryfix = dfcntryfix)
 
 grvdata = gravity(dftrade, display = true);
 
 # ################################################################
 # # Recover the trade costs and technology parameters
-
-θ = 4.0
 
 Ncntry = 19
 
