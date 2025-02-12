@@ -97,9 +97,27 @@ end
 ###############################################################
 ###############################################################
 
-function sim_trade_pattern_ek_fast(λ, τ, θ, σ, code)
+function average_trade_pattern(λ, τ, θ, σ; Ngoods = 100000, Nruns = 30)
+
+    πshares = zeros(size(τ))    
+
+    Threads.@threads for xxx = 1:Nruns
+
+        πshares = πshares .+ (1.0 / Nruns)*sim_trade_pattern_ek_fast(λ, τ, θ, σ, Ngoods = Ngoods, code = xxx)[1]
+
+    end
+
+    return πshares
+
+end
+
+###############################################################
+###############################################################
+
+
+function sim_trade_pattern_ek_fast(λ, τ, θ, σ; Ngoods = 100000, code = 1)
     # Parameters for goods and countries and the sample size for prices
-    Ngoods = 1000000 # Adjust if too slow
+    Ngoods = Ngoods # Adjust if too slow
     Ncntry = length(λ)
 
     # Parameters for technologies
@@ -119,6 +137,8 @@ function sim_trade_pattern_ek_fast(λ, τ, θ, σ, code)
     u = Array{Float64}(undef, Ncntry, Ngoods)
 
     rand!(MersenneTwister(03281978 + code ), u)
+
+    println(code)
 
     @inbounds @views Threads.@threads for j in 1:Ncntry
 
@@ -144,7 +164,7 @@ function sim_trade_pattern_ek_fast(λ, τ, θ, σ, code)
 
             @inbounds for ex in 1:Ncntry
 
-                cif_price = τ[ex, im] * p[ex, gd] # price of exporter
+                cif_price = τ[im, ex] * p[ex, gd] # price of exporter
 
                 if cif_price < low_price # if the price is lower than the current low price
 
@@ -159,7 +179,7 @@ function sim_trade_pattern_ek_fast(λ, τ, θ, σ, code)
             low_price_pow = low_price^(one_minus_σ)  
 
             # Update trade matrix `m`
-            m[min_ex, im] += low_price_pow 
+            m[im, min_ex] += low_price_pow 
 
             # Update sum price and record lowest price
             sum_price[im] += low_price_pow
@@ -177,7 +197,7 @@ function sim_trade_pattern_ek_fast(λ, τ, θ, σ, code)
 
         for ex in 1:Ncntry
 
-            m[ex, im] = (inv_Ngoods*m[ex, im]) / g_val^(one_minus_σ )
+            m[im, ex] = inv_Ngoods*(m[im, ex]) / g_val^(one_minus_σ )
 
         end
 
