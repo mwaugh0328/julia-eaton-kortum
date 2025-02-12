@@ -121,10 +121,6 @@ function sim_trade_pattern_ek_fast(λ, τ, θ, σ; Ngoods = 100000, code = 1)
     Ncntry = length(λ)
 
     # Parameters for technologies
-
-    inv_σ = one(σ) / (1 - σ)
-
-    one_minus_σ = one(σ) - σ
     
     inv_Ngoods = 1.0 / Ngoods
 
@@ -155,12 +151,12 @@ function sim_trade_pattern_ek_fast(λ, τ, θ, σ; Ngoods = 100000, code = 1)
 
     rec_low_price = Array{Float64}(undef, Ncntry, Ngoods)
 
-    @inbounds Threads.@threads for gd in 1:Ngoods  # Loop over goods
+    @inbounds for gd in 1:Ngoods  # Loop over goods # threading here messes stuff up  
 
         @inbounds for im in 1:Ncntry  # Loop over importing countries
 
-            low_price = 1.0e7
-            min_ex = 1.0
+            low_price = p[im, gd]
+            min_ex = im
 
             @inbounds for ex in 1:Ncntry
 
@@ -175,14 +171,11 @@ function sim_trade_pattern_ek_fast(λ, τ, θ, σ; Ngoods = 100000, code = 1)
 
             end
 
-            # Precompute power once
-            low_price_pow = low_price^(one_minus_σ)  
-
             # Update trade matrix `m`
-            m[im, min_ex] += low_price_pow 
+            m[im, min_ex] += low_price^(1.0 - σ)  
 
             # Update sum price and record lowest price
-            sum_price[im] += low_price_pow
+            sum_price[im] += low_price^(1.0 - σ) 
 
             rec_low_price[im, gd] = low_price
         end
@@ -193,11 +186,11 @@ function sim_trade_pattern_ek_fast(λ, τ, θ, σ; Ngoods = 100000, code = 1)
 
     for im in 1:Ncntry
 
-        g_val = (sum_price[im] * inv_Ngoods)^inv_σ
+        g_val = (sum_price[im] * inv_Ngoods)
 
         for ex in 1:Ncntry
 
-            m[im, ex] = inv_Ngoods*(m[im, ex]) / g_val^(one_minus_σ )
+            m[im, ex] = inv_Ngoods*( m[im, ex] ) / g_val
 
         end
 
