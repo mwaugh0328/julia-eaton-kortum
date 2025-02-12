@@ -98,46 +98,44 @@ end
 ###############################################################
 
 function sim_trade_pattern_ek_fast(λ, τ, θ, σ, code)
-
     # Parameters for goods and countries and the sample size for prices
     Ngoods = 1000000 # Adjust if too slow
     Ncntry = length(λ)
 
     # Parameters for technologies
-    η = σ
-    inv_η = 1.0 / (1 - η)
+
+    inv_σ = one(σ) / (1 - σ)
+
+    one_minus_σ = one(σ) - σ
+    
     inv_Ngoods = 1.0 / Ngoods
 
+    ###############################################################
     # Draw productivities and and compute unit costs to produce each good in
     # each country
     
-    pconst = Array{Float64}(undef, Ncntry, Ngoods)
+    p = Array{Float64}(undef, Ncntry, Ngoods)
 
     u = Array{Float64}(undef, Ncntry, Ngoods)
 
     rand!(MersenneTwister(03281978 + code ), u)
 
-    @time @fastmath u .= (-log.(u)).^ (1.0 / θ) 
+    @inbounds @views Threads.@threads for j in 1:Ncntry
 
-    #(log.(u) ./ (-λ[j])) .^ (1/θ) 
-
-    λ = λ.^ (-1.0 / θ)
-
-    @time @inbounds @views Threads.@threads for j in 1:Ncntry
-
-        pconst[j, :] .= u[j,:] .* λ[j] 
+        p[j, :] .= marginal_cost.(u[j,:], λ[j], θ) 
+        #not sure that this helped... may need to return back to the original code
 
     end
 
+    ###############################################################
+
     # Loop to calculate the low price and country suppliers
-    m = zeros(Ncntry, Ncntry)
-    sum_price = Array{Float64}(undef, Ncntry)
+    m = zeros(Ncntry, Ncntry) # need to be zero as I'm summing over stuff
+    sum_price = zeros(Ncntry)
+
     rec_low_price = Array{Float64}(undef, Ncntry, Ngoods)
 
-    #cif_price = Array{Float64}(undef, 1)  # Preallocate outside loops
-    η_1 = 1.0 - η  # Precompute exponent
-
-    @time Threads.@threads for gd in 1:Ngoods  # Loop over goods
+    @inbounds Threads.@threads for gd in 1:Ngoods  # Loop over goods
 
         @inbounds for im in 1:Ncntry  # Loop over importing countries
 
@@ -146,22 +144,22 @@ function sim_trade_pattern_ek_fast(λ, τ, θ, σ, code)
 
             @inbounds for ex in 1:Ncntry
 
-                cif_price = τ[ex, im] * pconst[ex, gd]
+                cif_price = τ[ex, im] * p[ex, gd] # price of exporter
 
-                if cif_price < low_price
+                if cif_price < low_price # if the price is lower than the current low price
 
-                    low_price = cif_price
+                    low_price = cif_price # it is the low price
                     
-                    min_ex = ex
+                    min_ex = ex # and the exporter is the one with the lowest price
                 end
 
             end
 
             # Precompute power once
-            low_price_pow = low_price^η_1  
+            low_price_pow = low_price^(one_minus_σ)  
 
             # Update trade matrix `m`
-            m[min_ex, im] += low_price_pow
+            m[min_ex, im] += low_price_pow 
 
             # Update sum price and record lowest price
             sum_price[im] += low_price_pow
@@ -173,13 +171,13 @@ function sim_trade_pattern_ek_fast(λ, τ, θ, σ, code)
 
     # Loop to calculate aggregate price index and the trade shares.
 
-    @time for im in 1:Ncntry
+    for im in 1:Ncntry
 
-        g_val = (sum_price[im] * inv_Ngoods)^inv_η
+        g_val = (sum_price[im] * inv_Ngoods)^inv_σ
 
         for ex in 1:Ncntry
 
-            m[ex, im] = (inv_Ngoods*m[ex, im]) / g_val^(1.0 - η)
+            m[ex, im] = (inv_Ngoods*m[ex, im]) / g_val^(one_minus_σ )
 
         end
 
@@ -188,3 +186,33 @@ function sim_trade_pattern_ek_fast(λ, τ, θ, σ, code)
     return m, rec_low_price
 
 end
+
+###############################################################
+###############################################################
+
+function marginal_cost(u, λ, θ)
+    # takes random number u, productivity λ and frechet shape parameters
+    # θ and returns the marginal cost of producing a good
+
+    return ( log(u) / (-λ) )^ ( one(θ) / θ )
+
+    # (log.(u) ./ (-λ[j])) .^ (1/θ) 
+
+end
+
+###############################################################
+
+function plot_trade(πshares, Ncntry)
+
+    trademodel = log.(vec(normalize_by_home_trade(πshares, Ncntry)'))
+
+    dfmodel = DataFrame(trade = trademodel)
+
+    filter!(row -> ~(row.trade ≈ 1.0), dfmodel);
+
+    filter!(row -> ~(row.trade ≈ 0.0), dfmodel);
+
+    return dfmodel
+
+end
+
