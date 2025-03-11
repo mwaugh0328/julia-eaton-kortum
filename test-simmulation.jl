@@ -1,6 +1,6 @@
 include("./src/gravity-tools.jl")
 include("./src/trade-environment.jl")
-include("./src/sim_trade_pattern_ek.jl")
+include("./src/simmulate-eaton-kortum.jl")
 using CSV
 using DataFrames
 using Plots
@@ -49,14 +49,18 @@ make_technology!(grvdata, T, W, grv_params)
 
 @time πshares, foo = sim_trade_pattern_ek(exp.(grvdata.S), d, grv_params.θ, 1.5);
 
-πshares = average_trade_pattern(exp.(grvdata.S), d, grv_params.θ, 1.5, Nruns = 30);
+@time πshares_BEKK, foo = sim_trade_pattern_BEJK(exp.(grvdata.S), d, grv_params.θ, 1.5);
+
+# πshares = average_trade_pattern(exp.(grvdata.S), d, grv_params.θ, 1.5, Nruns = 30);
 
 # ################################################################
 # # Recover the trade costs and technology parameters
 
 dfmodel = plot_trade(πshares, Ncntry);
 
-plot(dfmodel.trade, dftrade.trade, seriestype = :scatter, alpha = 0.75,
+dfmodel_BEJK = plot_trade(πshares_BEKK, Ncntry);
+
+plot(dfmodel.trade, dfmodel_BEJK.trade, seriestype = :scatter, alpha = 0.75,
     xlabel = "model",
     ylabel = "data",
     legend = false)
