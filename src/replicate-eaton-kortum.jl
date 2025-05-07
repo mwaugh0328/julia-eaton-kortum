@@ -25,50 +25,50 @@ dfcntryfix = DataFrame(CSV.File("../../ek-data/ek-cntryfix.csv"))
 # these are the fixed characteristics of each country...
 # not trade flows
 
-################################################################
-# Run the Gravity regression
+# ################################################################
+# # Run the Gravity regression
 
-grvdata = gravity(dftrade, display = true);
+# grvdata = gravity(dftrade, display = true);
 
+
+# # ################################################################
+# # # Recover the trade costs and technology parameters
+
+# θ = 4.0
+
+# d = zeros(19,19)
+# T = zeros(19)
+# W = ones(19)
+
+# make_trade_costs!(dfcntryfix, grvdata, d, θ)
+
+# make_technology!(grvdata, T, W, θ)
+
+# #@time gravity!(dftrade, d, T, W, θ)
 
 # ################################################################
-# # Recover the trade costs and technology parameters
+# # Feed into the model and then compare with data
 
-θ = 4.0
+# @time πshares, Φ = eaton_kortum(W, d, T, θ)
 
-d = zeros(19,19)
-T = zeros(19)
-W = ones(19)
+# # Now re-run the gravity regression on the model to 
+# # see if we recover the proper coeffecients
 
-make_trade_costs!(dfcntryfix, grvdata, d, θ)
+# trademodel = log.(vec(normalize_by_home_trade(πshares)'))
 
-make_technology!(grvdata, T, W, θ)
+# dfmodel = DataFrame(trade = trademodel)
 
-#@time gravity!(dftrade, d, T, W, θ)
+# filter!(row -> ~(row.trade ≈ 1.0), dfmodel);
 
-################################################################
-# Feed into the model and then compare with data
+# filter!(row -> ~(row.trade ≈ 0.0), dfmodel);
 
-@time πshares, Φ = eaton_kortum(W, d, T, θ)
+# dfmodel = hcat(dfmodel, dfcntryfix)
 
-# Now re-run the gravity regression on the model to 
-# see if we recover the proper coeffecients
+# grv = gravity(dfmodel, display = true);
 
-trademodel = log.(vec(normalize_by_home_trade(πshares)'))
+# plot(dfmodel.trade, dftrade.trade, seriestype = :scatter)
 
-dfmodel = DataFrame(trade = trademodel)
-
-filter!(row -> ~(row.trade ≈ 1.0), dfmodel);
-
-filter!(row -> ~(row.trade ≈ 0.0), dfmodel);
-
-dfmodel = hcat(dfmodel, dfcntryfix)
-
-grv = gravity(dfmodel, display = true);
-
-plot(dfmodel.trade, dftrade.trade, seriestype = :scatter)
-
-################################################################
-# Feed into the model and then compare with data
+# ################################################################
+# # Feed into the model and then compare with data
 
 

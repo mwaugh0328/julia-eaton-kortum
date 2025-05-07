@@ -43,6 +43,47 @@ end
 
 # end
 
+function replace_tariff!(tariff_matrix, row_index, new_row)
+    tariff_matrix[row_index, :] = new_row
+
+    if tariff_matrix[row_index, row_index] != 0.0
+        tariff_matrix[row_index, row_index] = 0.0;
+    end
+
+end
+
+
+
+function make_ek_dataset(data_path = ".\\ek-data\\")
+
+    # Construct file paths using joinpath
+    ek_data_path = joinpath(data_path, "ek-data.csv")
+    ek_language_path = joinpath(data_path, "ek-language.csv")
+    ek_labor_path = joinpath(data_path, "ek-labor.csv")
+    ek_cntryfix_path = joinpath(data_path, "ek-cntryfix.csv")
+
+    # Read CSV files into DataFrames
+    dftrade = DataFrame(CSV.File(ek_data_path))
+    dflang = DataFrame(CSV.File(ek_language_path))
+    dflabor = DataFrame(CSV.File(ek_labor_path))
+
+    # Filter out rows where trade is exactly 1.0 or 0.0
+    filter!(row -> ~(row.trade ≈ 1.0), dftrade)
+    filter!(row -> ~(row.trade ≈ 0.0), dftrade)
+
+    # Combine dftrade and dflang DataFrames horizontally
+    dftrade = hcat(dftrade, dflang)
+
+    # Read the country fix DataFrame
+    dfcntryfix = DataFrame(CSV.File(ek_cntryfix_path))
+
+    return dftrade, dfcntryfix, dflabor
+
+end
+
+##########################################################################
+##########################################################################
+
 ##########################################################################
 ##########################################################################
 
@@ -60,6 +101,41 @@ function make_technology!(gravity_results, T, W, gravity_params)
 
 end
 
+
+function make_technology(gravity_results, W, gravity_params)
+    
+    @unpack θ, Ncntry = gravity_params
+    @unpack S = gravity_results
+
+    T = similar(W)
+
+    for importer = 1:Ncntry
+
+        T[importer] = exp( (S[importer] + θ*log(W[importer])) )
+        #equation (27) from EK, but with β = 1 (no round about)
+
+    end
+
+    return T
+
+end
+
+function make_S(W, trade_parameters)
+    
+    @unpack θ, Ncntry, T = trade_parameters
+
+    S = similar(W)
+
+    for importer = 1:Ncntry
+
+        S[importer] =  log(T[importer]) - θ*log(W[importer])
+        #equation (27) from EK, but with β = 1 (no round about)
+
+    end
+
+    return S
+
+end
 
 
 ##########################################################################
@@ -441,3 +517,20 @@ function get_first(grp, variable)
     return var
 
 end 
+
+###############################################################
+
+function plot_trade(πshares, Ncntry)
+    # helps for plotting the trade shares
+
+    trademodel = log.(vec(normalize_by_home_trade(πshares, Ncntry)'))
+
+    dfmodel = DataFrame(trade = trademodel)
+
+    filter!(row -> ~(row.trade ≈ 1.0), dfmodel);
+
+    filter!(row -> ~(row.trade ≈ 0.0), dfmodel);
+
+    return dfmodel
+
+end

@@ -9,20 +9,9 @@ using MINPACK
 ################################################################
 # builds the EK dataset
 
-dftrade = DataFrame(CSV.File("./ek-data/ek-data.csv"))
-
-dflang = DataFrame(CSV.File("./ek-data/ek-language.csv"))
-
-dflabor = DataFrame(CSV.File("./ek-data/ek-labor.csv"))
-
-filter!(row -> ~(row.trade ≈ 1.0), dftrade);
-
-filter!(row -> ~(row.trade ≈ 0.0), dftrade);
-
-dftrade = hcat(dftrade, dflang);
-
-#dfcntryfix = select(dftrade,Not("trade"))
-dfcntryfix = DataFrame(CSV.File("./ek-data/ek-cntryfix.csv"));
+dftrade, dfcntryfix, dflabor = make_ek_dataset()
+# this one has the country numbers which allows for the construction of the 
+# trade costs given the estimated fixed effects from the gravity regression
 
 ################################################################
 
@@ -46,8 +35,13 @@ make_technology!(grvdata, T, W, grv_params)
 # ################################################################
 # # Recover the trade costs and technology parameters
 
+τ = zeros(Ncntry,Ncntry)
 
-@time πshares, foo = sim_trade_pattern_ek(exp.(grvdata.S), d, grv_params.θ, 1.5);
+trd_prm = trade_params(θ = grv_params.θ, d = d, S = exp.(grvdata.S), Ncntry = grv_params.Ncntry, N = grv_params.L)
+
+# @time πshares, foo = sim_trade_pattern_ek(exp.(grvdata.S), d, τ, grv_params.θ, 1.5);
+
+πshares, foo = sim_trade_pattern_ek(trd_prm);
 
 @time πshares_BEKK, foo = sim_trade_pattern_BEJK(exp.(grvdata.S), d, grv_params.θ, 1.5);
 
@@ -60,7 +54,7 @@ dfmodel = plot_trade(πshares, Ncntry);
 
 dfmodel_BEJK = plot_trade(πshares_BEKK, Ncntry);
 
-plot(dfmodel.trade, dfmodel_BEJK.trade, seriestype = :scatter, alpha = 0.75,
+plot(dfmodel.trade, dftrade.trade, seriestype = :scatter, alpha = 0.75,
     xlabel = "model",
     ylabel = "data",
     legend = false)
